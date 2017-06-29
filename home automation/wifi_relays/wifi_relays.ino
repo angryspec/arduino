@@ -3,16 +3,15 @@
 
 #define RELAY_ONE 4
 #define RELAY_TWO 5
-#define mqtt_server "192.168.1.232"
-#define light_topic "office/light"
-#define fan_topic "office/fan"
 
 const char* host = "OfficeESP";
-const char* ssid = "wireless_network";
-const char* password = "1234546";
+const char* ssid = "Pirate Radio_2G";
+const char* password = "123456";
+const char* mqtt_server "192.168.1.232"
 const char* mqtt_user = "office"; 
-const char* mqtt_pass = "1234546";
-const char compile_date[] = __DATE__ " " __TIME__;
+const char* mqtt_pass = "123456";
+const char* light_topic "office/light"
+const char* fan_topic "office/fan"
 
 String light;
 String fan;
@@ -107,12 +106,14 @@ void reconnect() {
   Serial.println("WiFi connected");  
   Serial.println("IP address: ");
   Serial.println(WiFi.localIP());
-  Serial.println();
+  
   Serial.print("Attempting MQTT connection...");
+  
   if (client.connect(host, mqtt_user, mqtt_pass)) {
     Serial.println("connected");
     client.subscribe("office/#");
-  } else {
+  } 
+  else {
     Serial.print("failed, rc=");
     Serial.print(client.state());
     Serial.println(" try again in 5 seconds");
