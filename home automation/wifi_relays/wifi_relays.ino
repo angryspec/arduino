@@ -8,10 +8,10 @@
 #define fan_topic "office/fan"
 
 const char* host = "OfficeESP";
-const char* ssid = "Pirate Radio_2G";
-const char* password = "!QAZ2wsx";
+const char* ssid = "wireless_network";
+const char* password = "1234546";
 const char* mqtt_user = "office"; 
-const char* mqtt_pass = "Evelynmayschmitz2010";
+const char* mqtt_pass = "1234546";
 const char compile_date[] = __DATE__ " " __TIME__;
 
 String light;
