@@ -1,120 +1,77 @@
-#include <ESP8266WiFi.h>          //ESP8266 Core WiFi Library (you most likely already have this in your sketch)
-#include <DNSServer.h>            //Local DNS Server used for redirecting all requests to the configuration portal
-#include <ESP8266WebServer.h>     //Local WebServer used to serve the configuration portal
-#include <WiFiManager.h>          //https://github.com/tzapu/WiFiManager WiFi Configuration Magic
-#include <PubSubClient.h>         //MQTT
-#include <ESP8266mDNS.h>
-#include <ESP8266HTTPUpdateServer.h>
+#include <ESP8266WiFi.h>      
+#include <PubSubClient.h>         
 
-////**********START CUSTOM PARAMS******************//
-
-//Define parameters for the http firmware update
-const char* host = "GarageESP";
-const char* update_path = "/WebFirmwareUpgrade";
-const char* update_username = "paul";
-const char* update_password = "Evelynmayschmitz2010";
-
-//Define the pins
 #define DOOR_STATE_PIN 4
 #define DOOR_RELAY_PIN 5
 #define LIGHT_RELAY_PIN 6
 
-//Define MQTT Params. If you don't need to 
-#define mqtt_server "MQTT Broker IP Address"
-#define door_topic "garage/door"
-#define button_topic "garage/button"
-#define light_topic "garage/light"
-const char* mqtt_user = "garage_door"; 
-const char* mqtt_pass = "Evelynmayschmitz2010";
+const char* host = "GarageESP";
+const char* ssid = "Pirate Radio_2G";
+const char* password = "123456";
+const char* mqtt_server "192.168.1.232"
+const char* mqtt_user = "garagedoor"; 
+const char* mqtt_pass = "123456";
+const char* door_topic "garage/door"
+const char* button_topic "garage/button"
+const char* light_topic "garage/light"
 
-//************END CUSTOM PARAMS********************//
-//This can be used to output the date the code was compiled
-const char compile_date[] = __DATE__ " " __TIME__;
-
-//Setup the web server for http OTA updates. 
-ESP8266WebServer httpServer(80);
-ESP8266HTTPUpdateServer httpUpdater;
-
-WiFiClient espClient;
-
-//Initialize MQTT
-PubSubClient client(espClient);
-
-//Setup Variables
-String switch1;
+String door;
 String strTopic;
 String strPayload;
 char* door_state = "UNDEFINED";
 char* last_state = "";
-
-//Wifi Manager will try to connect to the saved AP. If that fails, it will start up as an AP
-//which you can connect to and setup the wifi
-WiFiManager wifiManager;
 long lastMsg = 0;
 
+WiFiClient espClient;
+PubSubClient client(espClient);
+
 void setup() {
-  //Set Relay(output) and Door(input) pins
+  
   pinMode(DOOR_RELAY_PIN, OUTPUT);
   pinMode(DOOR_RELAY_PIN, LOW);
   pinMode(DOOR_STATE_PIN, INPUT);
 
   Serial.begin(115200);
+  delay(500);
 
-  //Set the wifi config portal to only show for 3 minutes, then continue.
-  wifiManager.setConfigPortalTimeout(180);
-  wifiManager.autoConnect(host);
+  Serial.println();
+  Serial.print("Connecting to ");
+  Serial.println(ssid);
 
-  //sets up the mqtt server, and sets callback() as the function that gets called
-  //when a subscribed topic has data
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(ssid, password);
+
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }  
+
+  Serial.println("");
+  Serial.println("WiFi connected");  
+  Serial.println("IP address: ");
+  Serial.println(WiFi.localIP());
+  
   client.setServer(mqtt_server, 1883);
-  client.setCallback(callback); //callback is the function that gets called for a topic sub
-
-  //setup http firmware update page.
-  MDNS.begin(host);
-  httpUpdater.setup(&httpServer, update_path, update_username, update_password);
-  httpServer.begin();
-  MDNS.addService("http", "tcp", 80);
-  Serial.printf("HTTPUpdateServer ready! Open http://%s.local%s in your browser and login with username '%s' and your password\n", host, update_path, update_username);
+  client.setCallback(callback);
 }
 
 void loop() {
-  //If MQTT client can't connect to broker, then reconnect
+
   if (!client.connected()) {
     reconnect();
   }
   checkDoorState();
-  client.loop(); //the mqtt function that processes MQTT messages
-  httpServer.handleClient(); //handles requests for the firmware update page
+  client.loop()
 }
 
 void callback(char* topic, byte* payload, unsigned int length) {
-  //if the 'garage/button' topic has a payload "OPEN", then 'click' the relay
   payload[length] = '\0';
   strTopic = String((char*)topic);
   if (strTopic == button_topic)
   {
-    switch1 = String((char*)payload);
-    if (switch1 == "OPEN")
+    door = String((char*)payload);
+    if (door == "OPEN")
     {
-      //'click' the relay
-      Serial.println("ON");
-      pinMode(DOOR_RELAY_PIN, HIGH);
-      delay(600);
-      pinMode(DOOR_RELAY_PIN, LOW);
-    }
-  }
-}
-
-void callback(char* topic, byte* payload, unsigned int length) {
-  //if the 'light/switch' topic has a payload "OPEN", then 'click' the relay
-  payload[length] = '\0';
-  strTopic = String((char*)topic);
-  if (strTopic == button_topic)
-  {
-    switch1 = String((char*)payload);
-    if (switch1 == "OPEN")
-    {
-      //'click' the relay
       Serial.println("ON");
       pinMode(DOOR_RELAY_PIN, HIGH);
       delay(600);
@@ -124,19 +81,21 @@ void callback(char* topic, byte* payload, unsigned int length) {
 }
 
 void checkDoorState() {
-  //Checks if the door state has changed, and MQTT pub the change
-  last_state = door_state; //get previous state of door
-  if (digitalRead(DOOR_STATE_PIN) == 0) // get new state of door
+  
+  last_state = door_state;
+  
+  if (digitalRead(DOOR_STATE_PIN) == 0) 
     door_state = "OPENED";
   else if (digitalRead(DOOR_STATE_PIN) == 1)
     door_state = "CLOSED"; 
 
-  if (last_state != door_state) { // if the state has changed then publish the change
+  if (last_state != door_state) { e
     client.publish(door_topic, door_state);
     Serial.println(door_state);
   }
-  //pub every minute, regardless of a change.
+  
   long now = millis();
+  
   if (now - lastMsg > 60000) {
     lastMsg = now;
     client.publish(door_topic, door_state);
@@ -144,13 +103,28 @@ void checkDoorState() {
 }
 
 void reconnect() {
-  //Reconnect to Wifi and to MQTT. If Wifi is already connected, then autoconnect doesn't do anything.
-  wifiManager.autoConnect(host);
+  
+  Serial.println();
+  Serial.print("Connecting to ");
+  Serial.println(ssid);
+
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+
+  Serial.println("");
+  Serial.println("WiFi connected");  
+  Serial.println("IP address: ");
+  Serial.println(WiFi.localIP());
+  
   Serial.print("Attempting MQTT connection...");
+  
   if (client.connect(host, mqtt_user, mqtt_pass)) {
     Serial.println("connected");
     client.subscribe("garage/#");
-  } else {
+  } 
+  else {
     Serial.print("failed, rc=");
     Serial.print(client.state());
     Serial.println(" try again in 5 seconds");
