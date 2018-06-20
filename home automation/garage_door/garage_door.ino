@@ -6,11 +6,11 @@
 #define LIGHT_RELAY_PIN 6
 
 const char* host = "GarageESP";
-const char* ssid = "Pirate Radio_2G";
-const char* password = "123456";
+const char* ssid = "SSID";
+const char* password = "PASSWORD";
 const char* mqtt_server "192.168.1.232"
 const char* mqtt_user = "garagedoor"; 
-const char* mqtt_pass = "123456";
+const char* mqtt_pass = "PASSWORD";
 const char* door_topic "garage/door"
 const char* button_topic "garage/button"
 const char* light_topic "garage/light"
